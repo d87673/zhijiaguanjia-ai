@@ -1,0 +1,3 @@
+- [智家管家AI 公司核心档案](memory/company-core-profile.md) — 产品定位、定价、KPI
+- [全流程自动化工作流](memory/operational-workflows.md) — 部门职责、日报标准
+- [公司安全规则](memory/security-rules.md) — .env保护、SSH鉴权、密钥管理

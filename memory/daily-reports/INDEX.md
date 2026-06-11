@@ -1,0 +1,2 @@
+- [2026-06-11 日报](memory/daily-reports/2026-06-11.md) — MVP v0.1 完成，22条路由编译通过
+- [月度总结](memory/daily-reports/.monthly-summary.md) — 核心KPI追踪

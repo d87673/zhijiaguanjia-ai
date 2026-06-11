@@ -1,0 +1,13 @@
+{
+  "tasks": [
+    {
+      "id": "fd7494e0",
+      "cron": "47 7 * * *",
+      "prompt": "智家管家AI · 每日经营日报自动生成任务。请执行以下操作：\n1. 调用 /api/stats 检查系统状态\n2. 生成当日经营日报，写入 memory/daily-reports/YYYY-MM-DD.md\n3. 检查是否有5类严重问题需要报警（系统崩溃/支付故障/法律风险/数据泄露/7天无新客户）\n4. 如有风险，在日报中明确标注等级和影响\n5. 如无严重问题，正常生成日报即可，无需打扰CEO",
+      "createdAt": 1781146626719,
+      "recurring": true,
+      "createdBySessionId": "c9b21b1c-3e40-4281-bfe5-ab88f4f076cd",
+      "createdByPid": 26928
+    }
+  ]
+}
