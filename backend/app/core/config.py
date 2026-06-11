@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # AI APIs
     DEEPSEEK_API_KEY: str = ""
-    DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
+    DEEPSEEK_API_URL: str = "https://api.deepseek.com/chat/completions"
     DOUBAO_API_KEY: str = ""
     DOUBAO_API_URL: str = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
 
@@ -41,8 +41,11 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
 
+    # GitHub
+    GITHUB_TOKEN: str = ""
+
     class Config:
-        env_file = ".env"
+        env_file = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".env")
         env_file_encoding = "utf-8"
 
 

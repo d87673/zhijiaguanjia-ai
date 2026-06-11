@@ -55,7 +55,7 @@
 | **数据库** | PostgreSQL | 16 | 主数据库 |
 | **缓存** | Redis | 7 | 会话/缓存/队列 |
 | **认证** | JWT (python-jose) | - | 无状态认证 |
-| **AI服务** | Deepseek V4 Pro + 豆包 4.0 Ultra | - | AI客服/调度/营销 |
+| **AI服务** | Deepseek V4 Pro + 豆包 Seed 2.0 Pro | - | AI客服/调度/营销 |
 | **支付** | 微信支付 + 支付宝 | - | 收款 |
 | **反向代理** | Nginx | Alpine | 静态文件 + API代理 |
 | **容器化** | Docker + Compose | - | 部署 |

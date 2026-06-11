@@ -6,7 +6,7 @@ settings = get_settings()
 
 async def chat_completion(
     messages: list[dict],
-    model: str = "deepseek-chat",
+    model: str = "deepseek-v4-pro",
     temperature: float = 0.7,
     max_tokens: int = 2000,
 ) -> dict:
@@ -26,6 +26,7 @@ async def chat_completion(
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
+                "thinking": {"type": "disabled"},
             },
         )
         if response.status_code != 200:
@@ -50,7 +51,7 @@ async def doubao_chat_completion(
                 "Authorization": f"Bearer {settings.DOUBAO_API_KEY}",
             },
             json={
-                "model": "doubao-pro-32k",
+                "model": "doubao-seed-2-0-pro-260215",
                 "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
