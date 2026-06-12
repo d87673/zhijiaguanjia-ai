@@ -54,3 +54,8 @@ next-env.d.ts
 
 # Docker
 docker-compose.override.yml
+
+# Python
+**/__pycache__/
+*.py[cod]
+*.egg-info/
