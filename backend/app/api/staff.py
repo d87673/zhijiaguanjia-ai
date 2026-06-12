@@ -20,7 +20,7 @@ async def list_staff(
     _: User = Depends(get_current_user),
 ):
     offset = (page - 1) * limit
-    query = select(Staff).where(Staff.company_id == company_id)
+    query = select(Staff).where(Staff.company_id == company_id).options(selectinload(Staff.orders))
     count_query = select(func.count()).select_from(Staff).where(Staff.company_id == company_id)
 
     if q:

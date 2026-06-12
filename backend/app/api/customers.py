@@ -20,7 +20,7 @@ async def list_customers(
     _: User = Depends(get_current_user),
 ):
     offset = (page - 1) * limit
-    query = select(Customer).where(Customer.company_id == company_id)
+    query = select(Customer).where(Customer.company_id == company_id).options(selectinload(Customer.orders))
     count_query = select(func.count()).select_from(Customer).where(Customer.company_id == company_id)
 
     if q:
