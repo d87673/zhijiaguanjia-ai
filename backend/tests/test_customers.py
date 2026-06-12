@@ -36,8 +36,8 @@ async def test_list_customers(client: AsyncClient, auth_headers: dict):
     response = await client.get("/api/v1/customers", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 3
-    assert len(data["customers"]) == 3
+    assert data["data"]["total"] == 3
+    assert len(data["data"]["items"]) == 3
 
 
 @pytest.mark.asyncio
@@ -53,8 +53,8 @@ async def test_search_customers_by_name(client: AsyncClient, auth_headers: dict)
     response = await client.get("/api/v1/customers?q=王", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["customers"][0]["name"] == "王小明"
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["name"] == "王小明"
 
 
 @pytest.mark.asyncio
@@ -70,8 +70,8 @@ async def test_search_customers_by_phone(client: AsyncClient, auth_headers: dict
     response = await client.get("/api/v1/customers?q=1111", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["customers"][0]["name"] == "张三"
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["name"] == "张三"
 
 
 @pytest.mark.asyncio
@@ -112,3 +112,30 @@ async def test_create_customer_minimal_fields(client: AsyncClient, auth_headers:
     assert data["name"] == "极简客户"
     assert data["phone"] is None
     assert data["tags"] == []
+
+
+# ─── Customer Delete ───
+
+
+@pytest.mark.asyncio
+async def test_delete_customer(client: AsyncClient, auth_headers: dict):
+    """删除客户"""
+    create_resp = await client.post("/api/v1/customers", json={
+        "name": "待删除客户", "phone": "13800000000",
+    }, headers=auth_headers)
+    customer_id = create_resp.json()["id"]
+
+    response = await client.delete(f"/api/v1/customers/{customer_id}", headers=auth_headers)
+    assert response.status_code == 200
+    assert "删除成功" in response.json()["message"]
+
+    # Verify deleted
+    list_resp = await client.get("/api/v1/customers", headers=auth_headers)
+    assert list_resp.json()["data"]["total"] == 0
+
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent_customer(client: AsyncClient, auth_headers: dict):
+    """删除不存在的客户应返回 404"""
+    response = await client.delete("/api/v1/customers/fake-customer-id", headers=auth_headers)
+    assert response.status_code == 404

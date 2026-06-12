@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button, Card } from '@/components/ui';
+import api from '@/lib/api';
 
 interface Message {
   role: 'user' | 'assistant' | 'system';
@@ -40,52 +41,7 @@ export function AIChatPage() {
     }));
 
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/v1/ai/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          action: 'chat',
-          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversation],
-        }),
-      });
-
-      if (!response.ok) throw new Error('Stream error');
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No reader');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullContent = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                fullContent += parsed.content;
-                setStreamingContent(fullContent);
-              }
-            } catch { /* skip invalid JSON */ }
-          }
-        }
-      }
-
-      setMessages((m) => [...m, { role: 'assistant', content: fullContent }]);
+      await doStreamRequest(conversation);
     } catch {
       setMessages((m) => [...m, { role: 'assistant', content: '抱歉，AI服务暂时不可用，请稍后重试。' }]);
     } finally {
@@ -93,6 +49,82 @@ export function AIChatPage() {
       setStreamingContent('');
     }
   }, [input, messages, streaming]);
+
+  /** Make a streaming fetch request with automatic 401 token refresh. */
+  const doStreamRequest = async (conversation: { role: string; content: string }[]) => {
+    const token = localStorage.getItem('access_token');
+    if (!token) throw new Error('No token');
+
+    const doFetch = (t: string) =>
+      fetch('/api/v1/ai/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${t}`,
+        },
+        body: JSON.stringify({
+          action: 'chat',
+          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversation],
+        }),
+      });
+
+    let response = await doFetch(token);
+
+    // On 401, try to refresh the token and retry once
+    if (response.status === 401) {
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (!refreshToken) throw new Error('Auth required');
+      try {
+        const { data: refreshData } = await api.post('/auth/refresh', { refresh_token: refreshToken });
+        const newAccess = refreshData.access_token;
+        localStorage.setItem('access_token', newAccess);
+        response = await doFetch(newAccess);
+      } catch {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        return;
+      }
+    }
+
+    if (!response.ok) throw new Error('Stream error');
+    await readStream(response);
+  };
+
+  /** Read SSE stream events and update messages state. */
+  async function readStream(response: Response) {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('No reader');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              fullContent += parsed.content;
+              setStreamingContent(fullContent);
+            }
+          } catch { /* skip invalid JSON */ }
+        }
+      }
+    }
+
+    setMessages((m) => [...m, { role: 'assistant', content: fullContent }]);
+  }
 
   const displayedMessages = messages;
   const isTyping = streaming && streamingContent === '';

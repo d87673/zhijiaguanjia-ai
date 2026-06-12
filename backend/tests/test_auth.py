@@ -136,3 +136,99 @@ async def test_register_weak_password(client: AsyncClient):
         "company_name": "测试公司",
     })
     assert response.status_code == 422
+
+
+# ─── Token Refresh ───
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_success(client: AsyncClient):
+    """使用有效的 refresh_token 获取新的 access_token"""
+    # Register to get a real refresh token
+    register_resp = await client.post("/api/v1/auth/register", json={
+        "name": "刷新测试",
+        "email": "refresh_test@test.com",
+        "password": "password123456",
+        "company_name": "刷新测试公司",
+    })
+    assert register_resp.status_code == 200
+    refresh_token = register_resp.json()["refresh_token"]
+
+    # Use it to refresh
+    response = await client.post("/api/v1/auth/refresh", json={
+        "refresh_token": refresh_token,
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_wrong_type(client: AsyncClient, auth_headers: dict):
+    """使用 access_token 类型去刷新应返回 401"""
+    # Register to get an access token
+    register_resp = await client.post("/api/v1/auth/register", json={
+        "name": "类型测试",
+        "email": "type_test@test.com",
+        "password": "password123456",
+        "company_name": "类型测试公司",
+    })
+    access_token = register_resp.json()["access_token"]
+
+    response = await client.post("/api/v1/auth/refresh", json={
+        "refresh_token": access_token,  # access token, not refresh token
+    }, headers=auth_headers)
+    assert response.status_code == 401
+    assert "Invalid" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_invalid(client: AsyncClient, auth_headers: dict):
+    """使用无效 token 应返回 401"""
+    response = await client.post("/api/v1/auth/refresh", json={
+        "refresh_token": "this.is.not.a.valid.jwt.token",
+    }, headers=auth_headers)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_expired(client: AsyncClient, auth_headers: dict):
+    """使用过期的 refresh_token 应返回 401"""
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt as jose_jwt
+    from app.core.config import get_settings
+
+    s = get_settings()
+    payload = {
+        "sub": "c0d1e2f3-a4b5-6789-abcd-ef1234567890",
+        "type": "refresh",
+        "exp": datetime.now(timezone.utc) - timedelta(hours=1),
+    }
+    expired_token = jose_jwt.encode(payload, s.JWT_SECRET_KEY, algorithm=s.JWT_ALGORITHM)
+
+    response = await client.post("/api/v1/auth/refresh", json={
+        "refresh_token": expired_token,
+    }, headers=auth_headers)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_missing_sub(client: AsyncClient, auth_headers: dict):
+    """token 中没有 sub 字段应返回 401"""
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt as jose_jwt
+    from app.core.config import get_settings
+
+    s = get_settings()
+    payload = {
+        "type": "refresh",
+        "exp": datetime.now(timezone.utc) + timedelta(days=7),
+    }
+    token_no_sub = jose_jwt.encode(payload, s.JWT_SECRET_KEY, algorithm=s.JWT_ALGORITHM)
+
+    response = await client.post("/api/v1/auth/refresh", json={
+        "refresh_token": token_no_sub,
+    }, headers=auth_headers)
+    assert response.status_code == 401
+    assert "Invalid token payload" in response.json()["detail"]

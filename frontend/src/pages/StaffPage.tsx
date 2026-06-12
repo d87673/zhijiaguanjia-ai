@@ -13,6 +13,7 @@ export function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Staff | null>(null);
   const [form, setForm] = useState<StaffCreate>(emptyForm);
   const [saving, setSaving] = useState(false);
   const addToast = useToastStore((s) => s.addToast);
@@ -27,7 +28,12 @@ export function StaffPage() {
 
   useEffect(() => { fetchStaff(); }, [fetchStaff]);
 
-  const openCreate = () => { setForm(emptyForm); setModalOpen(true); };
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setModalOpen(true); };
+  const openEdit = (s: Staff) => {
+    setEditing(s);
+    setForm({ name: s.name, phone: s.phone || '', email: s.email || '', skills: s.skills || [] });
+    setModalOpen(true);
+  };
 
   const toggleSkill = (skill: string) => {
     setForm((f) => ({
@@ -42,8 +48,13 @@ export function StaffPage() {
     if (!form.name.trim()) { addToast('请输入员工姓名', 'warning'); return; }
     setSaving(true);
     try {
-      await api.post('/staff', form);
-      addToast('员工已添加', 'success');
+      if (editing) {
+        await api.put(`/staff/${editing.id}`, form);
+        addToast('员工信息已更新', 'success');
+      } else {
+        await api.post('/staff', form);
+        addToast('员工已添加', 'success');
+      }
       setModalOpen(false);
       fetchStaff();
     } catch { addToast('保存失败', 'error'); }
@@ -79,8 +90,11 @@ export function StaffPage() {
         {s.is_active ? '在岗' : '休息'}
       </span>
     )},
-    { key: 'actions', header: '操作', className: 'w-20', render: (s) => (
-      <button onClick={(ev) => { ev.stopPropagation(); handleDelete(s); }} className="text-red-500 hover:text-red-700 text-sm">删除</button>
+    { key: 'actions', header: '操作', className: 'w-28', render: (s) => (
+      <div className="flex gap-2">
+        <button onClick={(ev) => { ev.stopPropagation(); openEdit(s); }} className="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
+        <button onClick={(ev) => { ev.stopPropagation(); handleDelete(s); }} className="text-red-500 hover:text-red-700 text-sm">删除</button>
+      </div>
     )},
   ];
 
@@ -95,13 +109,13 @@ export function StaffPage() {
       </div>
 
       <Card>
-        <Table columns={columns} data={staff} keyExtractor={(s) => s.id} loading={loading} />
+        <Table columns={columns} data={staff} keyExtractor={(s) => s.id} loading={loading} onRowClick={openEdit} />
       </Card>
 
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        title="添加员工"
+        title={editing ? '编辑员工' : '添加员工'}
         footer={
           <>
             <Button variant="outline" onClick={() => setModalOpen(false)}>取消</Button>

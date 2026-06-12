@@ -38,8 +38,8 @@ async def test_list_services(client: AsyncClient, auth_headers: dict):
     response = await client.get("/api/v1/services", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 3
-    assert len(data["services"]) == 3
+    assert data["data"]["total"] == 3
+    assert len(data["data"]["items"]) == 3
 
 
 @pytest.mark.asyncio
@@ -55,8 +55,8 @@ async def test_list_services_filter_by_category(client: AsyncClient, auth_header
     response = await client.get("/api/v1/services?category=cleaning", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["services"][0]["name"] == "保洁服务"
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["name"] == "保洁服务"
 
 
 @pytest.mark.asyncio
@@ -72,8 +72,8 @@ async def test_list_services_search(client: AsyncClient, auth_headers: dict):
     response = await client.get("/api/v1/services?q=清洁", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 1
-    assert data["services"][0]["name"] == "深度清洁"
+    assert data["data"]["total"] == 1
+    assert data["data"]["items"][0]["name"] == "深度清洁"
 
 
 @pytest.mark.asyncio
@@ -116,7 +116,7 @@ async def test_delete_service(client: AsyncClient, auth_headers: dict):
 
     # Verify it's gone
     list_resp = await client.get("/api/v1/services", headers=auth_headers)
-    assert list_resp.json()["total"] == 0
+    assert list_resp.json()["data"]["total"] == 0
 
 
 @pytest.mark.asyncio
@@ -140,6 +140,6 @@ async def test_services_pagination(client: AsyncClient, auth_headers: dict):
     response = await client.get("/api/v1/services?limit=10", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 25
-    assert len(data["services"]) == 10
-    assert data["page"] == 1
+    assert data["data"]["total"] == 25
+    assert len(data["data"]["items"]) == 10
+    assert data["data"]["page"] == 1

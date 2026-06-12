@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_current_company
 from app.models.models import User, Order, Customer, Staff, Payment
@@ -26,7 +27,7 @@ async def get_stats(
         return r.scalar() or 0
 
     async def count_today(model):
-        today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         r = await db.execute(
             select(func.count()).select_from(model).where(
                 model.company_id == company_id, model.created_at >= today
@@ -35,7 +36,7 @@ async def get_stats(
         return r.scalar() or 0
 
     async def count_this_month(model, date_field=None):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         field = date_field or model.created_at
         r = await db.execute(
@@ -69,7 +70,7 @@ async def get_stats(
         .where(
             Order.company_id == company_id,
             Payment.status == "paid",
-            Payment.paid_at >= datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0),
+            Payment.paid_at >= datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0),
         )
     )
     month_revenue = float(month_rev_result.scalar() or 0)
@@ -83,7 +84,7 @@ async def get_stats(
     # Last 7 days
     last_7 = []
     for i in range(6, -1, -1):
-        day = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
+        day = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=i)
         next_day = day + timedelta(days=1)
         r = await db.execute(
             select(func.count()).select_from(Order).where(
@@ -97,6 +98,7 @@ async def get_stats(
     # Recent orders
     recent_result = await db.execute(
         select(Order)
+        .options(selectinload(Order.customer))
         .where(Order.company_id == company_id)
         .order_by(Order.created_at.desc())
         .limit(5)
@@ -105,26 +107,30 @@ async def get_stats(
 
     return {
         "summary": {
-            "totalOrders": total_orders,
-            "pendingOrders": pending_orders,
-            "completedOrders": completed_orders,
-            "todayOrders": today_orders,
-            "thisMonthOrders": month_orders,
-            "totalCustomers": total_customers,
-            "activeCustomers": month_customers,
-            "totalStaff": total_staff,
-            "totalRevenue": total_revenue,
-            "thisMonthRevenue": month_revenue,
+            "total_orders": total_orders,
+            "pending_orders": pending_orders,
+            "completed_orders": completed_orders,
+            "today_orders": today_orders,
+            "this_month_orders": month_orders,
+            "total_customers": total_customers,
+            "active_customers": month_customers,
+            "total_staff": total_staff,
+            "total_revenue": total_revenue,
+            "this_month_revenue": month_revenue,
         },
-        "statusDistribution": status_dist,
-        "last7Days": last_7,
-        "recentOrders": [
+        "status_distribution": status_dist,
+        "last_7_days": [
+            {"date": d["date"], "orders": d["count"], "revenue": d["revenue"]}
+            for d in last_7
+        ],
+        "recent_orders": [
             {
                 "id": str(o.id),
-                "customerName": "(客户信息)",
+                "customer_name": o.customer.name if o.customer else "(客户信息)",
                 "status": o.status,
-                "totalAmount": float(o.total_amount),
-                "createdAt": o.created_at.isoformat(),
+                "total_amount": float(o.total_amount),
+                "created_at": o.created_at.isoformat(),
+                "address": o.address,
             }
             for o in recent
         ],

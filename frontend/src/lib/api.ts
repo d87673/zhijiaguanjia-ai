@@ -57,10 +57,10 @@ api.interceptors.response.use(
 
       const refreshToken = localStorage.getItem('refresh_token');
       if (!refreshToken) {
-        // No refresh token → force logout
+        // No refresh token → force logout via event (avoid hard redirect)
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(error);
       }
 
@@ -80,7 +80,7 @@ api.interceptors.response.use(
         processQueue(refreshError, null);
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        window.dispatchEvent(new CustomEvent('auth:logout'));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

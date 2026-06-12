@@ -38,10 +38,13 @@ async def list_services(
     total = total_result.scalar()
 
     return {
-        "services": [ServiceResponse.model_validate(s) for s in services],
-        "total": total,
-        "page": page,
-        "limit": limit,
+        "success": True,
+        "data": {
+            "items": [ServiceResponse.model_validate(s).model_dump() for s in services],
+            "total": total,
+            "page": page,
+            "limit": limit,
+        },
     }
 
 

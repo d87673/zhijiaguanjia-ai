@@ -119,6 +119,7 @@ export interface StaffCreate {
 
 // ─── Order ───
 export interface OrderItem {
+  id?: string;
   service_id: string;
   service_name?: string;
   quantity: number;
@@ -138,6 +139,7 @@ export interface Order {
   address: string | null;
   notes: string | null;
   items: OrderItem[];
+  payment?: Payment | null;
   created_at: string;
 }
 
@@ -158,6 +160,30 @@ export interface OrderCreate {
   address?: string;
   notes?: string;
   items: { service_id: string; quantity: number; price: number }[];
+}
+
+// ─── Payment ───
+export interface Payment {
+  id: string;
+  order_id: string;
+  amount: number;
+  method: 'wechat' | 'alipay' | 'cash' | 'card';
+  status: 'pending' | 'paid' | 'refunded' | 'failed';
+  transaction_id: string | null;
+  paid_at: string | null;
+  created_at?: string;
+}
+
+export interface PaymentCreateRequest {
+  order_id: string;
+  method: 'wechat' | 'alipay';
+  pay_type: 'native' | 'jsapi' | 'h5' | 'qr' | 'page';
+  openid?: string;
+}
+
+export interface PaymentRefundRequest {
+  amount?: number;
+  reason?: string;
 }
 
 // ─── AI ───
@@ -193,4 +219,56 @@ export interface PaginatedResponse<T> {
     page: number;
     page_size: number;
   };
+}
+
+// ─── H5 (Customer Self-Service) ───
+export interface H5ServiceItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  duration: number;
+  category: string | null;
+  image_url: string | null;
+}
+
+export interface H5CompanyInfo {
+  name: string;
+  phone: string;
+  customer_name: string;
+  customer_id: string;
+}
+
+export interface H5OrderItem {
+  service_id: string;
+  service_name?: string | null;
+  quantity: number;
+  price: number;
+}
+
+export interface H5Order {
+  id: string;
+  status: string;
+  total_amount: number;
+  scheduled_at: string | null;
+  completed_at: string | null;
+  address: string | null;
+  notes: string | null;
+  staff_name: string | null;
+  staff_phone: string | null;
+  items: H5OrderItem[];
+  payment: Payment | null;
+  created_at: string;
+}
+
+export interface H5OrderCreate {
+  scheduled_at?: string;
+  address?: string;
+  notes?: string;
+  items: { service_id: string; quantity: number; price: number }[];
+}
+
+export interface H5ReviewRequest {
+  rating: number;
+  comment: string;
 }

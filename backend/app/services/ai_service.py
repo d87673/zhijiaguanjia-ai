@@ -1,16 +1,39 @@
+import json
 import httpx
 from app.core.config import get_settings
 
 settings = get_settings()
 
+# ── 模型路由规则 ──
+# 默认 flash，仅高复杂度任务用 pro
+_DEFAULT_MODEL = "deepseek-v4-flash"
+_PRO_MODEL = "deepseek-v4-pro"
+
+# 需要 pro 模型的高复杂度 action（调度优化涉及多维度决策，用 pro）
+_PRO_ACTIONS = {"dispatch_optimizer"}
+
+
+def select_model(action: str = "", requested_model: str = "") -> str:
+    """根据任务类型自动匹配模型。
+    - 未指定时默认 flash
+    - 调度优化等高复杂度 action 自动用 pro
+    - 调用方可通过 requested_model 显式覆盖
+    """
+    if requested_model:
+        return requested_model
+    if action in _PRO_ACTIONS:
+        return _PRO_MODEL
+    return _DEFAULT_MODEL
+
 
 async def chat_completion(
     messages: list[dict],
-    model: str = "deepseek-v4-pro",
+    model: str = "",
     temperature: float = 0.7,
     max_tokens: int = 2000,
 ) -> dict:
-    """Call Deepseek V4 Pro API (non-streaming)."""
+    """Call DeepSeek API (non-streaming). 默认 flash，高复杂度自动 pro。"""
+    model = model or _DEFAULT_MODEL
     if not settings.DEEPSEEK_API_KEY:
         return {"choices": [{"message": {"content": "AI服务暂未配置，请联系管理员设置API密钥。"}}]}
 
@@ -36,11 +59,12 @@ async def chat_completion(
 
 async def chat_completion_stream(
     messages: list[dict],
-    model: str = "deepseek-v4-pro",
+    model: str = "",
     temperature: float = 0.7,
     max_tokens: int = 2000,
 ):
-    """Call Deepseek V4 Pro API with SSE streaming. Yields delta chunks."""
+    """Call DeepSeek API with SSE streaming. 默认 flash，高复杂度自动 pro。"""
+    model = model or _DEFAULT_MODEL
     if not settings.DEEPSEEK_API_KEY:
         yield {"choices": [{"delta": {"content": "AI服务暂未配置，请联系管理员设置API密钥。"}}]}
         return

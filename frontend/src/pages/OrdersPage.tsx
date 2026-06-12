@@ -121,7 +121,7 @@ export function OrdersPage() {
     { key: 'customer_name', header: '客户', render: (o) => <span className="font-medium">{o.customer_name || '—'}</span> },
     { key: 'address', header: '地址', render: (o) => <span className="text-sm">{o.address || '—'}</span> },
     { key: 'total_amount', header: '金额', render: (o) => <span className="font-semibold">¥{o.total_amount}</span> },
-    { key: 'items', header: '服务', render: (o) => (o.items || []).map((i: any) => (
+    { key: 'items', header: '服务', render: (o) => (o.items || []).map((i) => (
       <span key={i.service_id} className="inline-block text-xs bg-gray-100 rounded px-2 py-0.5 mr-1 mb-1">{i.service_name || i.service_id}×{i.quantity}</span>
     ))},
     { key: 'status', header: '状态', render: (o) => {

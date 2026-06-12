@@ -38,6 +38,36 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class OrderStatusUpdateRequest(BaseModel):
+    status: str
+    staff_id: Optional[str] = None
+
+
+# ─── Company ───
+class CompanyUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+
+
+class CompanyKeysUpdateRequest(BaseModel):
+    deepseek_key: Optional[str] = None
+    doubao_key: Optional[str] = None
+    wechat_mch_id: Optional[str] = None
+    wechat_appid: Optional[str] = None
+    wechat_api_v3_key: Optional[str] = None
+    wechat_cert_serial: Optional[str] = None
+    wechat_private_key: Optional[str] = None
+    alipay_app_id: Optional[str] = None
+    alipay_private_key: Optional[str] = None
+    alipay_public_key: Optional[str] = None
+    payment_notify_host: Optional[str] = None
+
+
 # ─── Company ───
 class CompanyResponse(BaseModel):
     id: str
@@ -118,6 +148,14 @@ class StaffCreate(BaseModel):
     skills: List[str] = []
 
 
+class StaffUpdate(BaseModel):
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    skills: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+
+
 class StaffResponse(BaseModel):
     id: str
     company_id: str
@@ -164,12 +202,39 @@ class OrderResponse(BaseModel):
     address: Optional[str]
     notes: Optional[str]
     items: list = []
+    payment: Optional[dict] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
 
 
 # ─── AI ───
+# ─── Payment ───
+class PaymentCreateRequest(BaseModel):
+    order_id: str
+    method: str = "wechat"  # wechat | alipay
+    pay_type: str = "native"  # native | jsapi | h5 | qr | page
+    openid: Optional[str] = None  # JSAPI 时必填
+
+
+class PaymentRefundRequest(BaseModel):
+    amount: float = Field(ge=0, default=0)  # 0 = 全额退款
+    reason: str = ""
+
+
+class PaymentResponse(BaseModel):
+    id: str
+    order_id: str
+    amount: float
+    method: str
+    status: str
+    transaction_id: Optional[str] = None
+    paid_at: Optional[datetime] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class ChatRequest(BaseModel):
     action: str = "chat"  # chat, dispatch, copywriter
     messages: List[dict]
@@ -186,6 +251,42 @@ class StatsResponse(BaseModel):
     status_distribution: List[dict]
     last_7_days: List[dict]
     recent_orders: List[dict]
+
+
+# ─── H5 (客户自助端) ───
+class H5OrderItemCreate(BaseModel):
+    service_id: str
+    quantity: int = Field(ge=1, default=1)
+    price: float = Field(ge=0, default=0)
+
+
+class H5OrderCreate(BaseModel):
+    scheduled_at: Optional[datetime] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    items: List[H5OrderItemCreate] = []
+
+
+class H5ReviewRequest(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str = ""
+
+
+class H5OrderResponse(BaseModel):
+    id: str
+    status: str
+    total_amount: float
+    scheduled_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+    staff_name: Optional[str] = None
+    staff_phone: Optional[str] = None
+    items: list = []
+    payment: Optional[dict] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 # ─── Pagination ───

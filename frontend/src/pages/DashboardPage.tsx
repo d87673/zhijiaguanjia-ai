@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Card } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
+import { useToastStore } from '@/stores/toastStore';
 import api from '@/lib/api';
 import type { StatsResponse } from '@/types';
 
 export function DashboardPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const addToast = useToastStore((s) => s.addToast);
 
   useEffect(() => {
     api.get<StatsResponse>('/stats')
       .then((res) => setStats(res.data))
-      .catch(() => {})
+      .catch(() => addToast('加载数据失败，请刷新页面重试', 'error'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [addToast]);
 
   if (loading) {
     return (
@@ -28,6 +31,27 @@ export function DashboardPage() {
     );
   }
 
+  const handleExport = async (type: 'orders' | 'customers' | 'full') => {
+    setExporting(true);
+    try {
+      const ext = type === 'full' ? 'xlsx' : 'csv';
+      const resp = await api.get(`/export/${type}?format=${type === 'full' ? 'excel' : 'csv'}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([resp.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${type}_${new Date().toISOString().slice(0, 10)}.${ext}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      addToast(`${type === 'orders' ? '订单' : type === 'customers' ? '客户' : '完整报表'}导出成功`, 'success');
+    } catch {
+      addToast('导出失败', 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const summaryCards = [
     { label: '总订单数', value: stats?.summary?.total_orders ?? 0, color: 'text-blue-600', bg: 'bg-blue-50', icon: '📋' },
     { label: '客户数量', value: stats?.summary?.total_customers ?? 0, color: 'text-green-600', bg: 'bg-green-50', icon: '👥' },
@@ -40,6 +64,19 @@ export function DashboardPage() {
       <div>
         <h2 className="text-2xl font-bold text-gray-900">控制台</h2>
         <p className="text-gray-500 mt-1">欢迎回来，这是您的业务概览</p>
+      </div>
+
+      {/* Export Buttons */}
+      <div className="flex gap-2 flex-wrap">
+        <Button variant="outline" size="sm" onClick={() => handleExport('orders')} loading={exporting}>
+          📋 导出订单 CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleExport('customers')} loading={exporting}>
+          👥 导出客户 CSV
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => handleExport('full')} loading={exporting}>
+          📊 导出完整报表 (.xlsx)
+        </Button>
       </div>
 
       {/* Summary Cards */}

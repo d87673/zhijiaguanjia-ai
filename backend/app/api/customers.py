@@ -43,13 +43,16 @@ async def list_customers(
     total = total_result.scalar()
 
     return {
-        "customers": [
-            {**CustomerResponse.model_validate(c).model_dump(), "order_count": len(c.orders) if c.orders else 0}
-            for c in customers
-        ],
-        "total": total,
-        "page": page,
-        "limit": limit,
+        "success": True,
+        "data": {
+            "items": [
+                {**CustomerResponse.model_validate(c).model_dump(), "order_count": len(c.orders) if c.orders else 0}
+                for c in customers
+            ],
+            "total": total,
+            "page": page,
+            "limit": limit,
+        },
     }
 
 
@@ -87,3 +90,21 @@ async def update_customer(
 
     await db.commit()
     return CustomerResponse.model_validate(customer)
+
+
+@router.delete("/{customer_id}", response_model=dict)
+async def delete_customer(
+    customer_id: str,
+    company_id: str = Depends(get_current_company),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Customer).where(Customer.id == customer_id, Customer.company_id == company_id)
+    )
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404, detail="客户不存在")
+    await db.delete(customer)
+    await db.commit()
+    return {"message": "删除成功"}

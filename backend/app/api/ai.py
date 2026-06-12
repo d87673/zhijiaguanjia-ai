@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from app.core.deps import get_current_user
 from app.models.models import User
 from app.schemas.schemas import ChatRequest
-from app.services.ai_service import chat_completion_stream, AI_PROMPTS
+from app.services.ai_service import chat_completion_stream, AI_PROMPTS, select_model
 from fastapi.responses import StreamingResponse
 import json
 
@@ -16,13 +16,14 @@ async def ai_endpoint(
 ):
     """AI endpoint: chat, dispatch optimization, marketing copywriting"""
     system_prompt = AI_PROMPTS.get(req.action, AI_PROMPTS["customer_service"])
+    model = select_model(action=req.action)
 
     full_messages = [{"role": "system", "content": system_prompt}]
     if req.context:
         full_messages.append({"role": "system", "content": f"额外信息: {req.context}"})
     full_messages.extend(req.messages)
 
-    result = await chat_completion_stream(full_messages)
+    result = await chat_completion_stream(full_messages, model=model)
     reply = result.get("choices", [{}])[0].get("message", {}).get("content", "AI服务暂不可用")
 
     return {"reply": reply}
@@ -35,6 +36,7 @@ async def ai_stream_endpoint(
 ):
     """Streaming AI response via Server-Sent Events (SSE)."""
     system_prompt = AI_PROMPTS.get(req.action, AI_PROMPTS["customer_service"])
+    model = select_model(action=req.action)
 
     full_messages = [{"role": "system", "content": system_prompt}]
     if req.context:
@@ -43,7 +45,7 @@ async def ai_stream_endpoint(
 
     async def event_generator():
         try:
-            async for chunk in chat_completion_stream(full_messages):
+            async for chunk in chat_completion_stream(full_messages, model=model):
                 content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
                 if content:
                     yield f"data: {json.dumps({'content': content}, ensure_ascii=False)}\n\n"

@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from app.core.database import get_db
 from app.core.deps import get_current_user, get_current_company
 from app.models.models import User, Staff
-from app.schemas.schemas import StaffCreate, StaffResponse
+from app.schemas.schemas import StaffCreate, StaffUpdate, StaffResponse
 
 router = APIRouter(prefix="/staff", tags=["Staff"])
 
@@ -35,13 +35,16 @@ async def list_staff(
     total = total_result.scalar()
 
     return {
-        "staff": [
-            {**StaffResponse.model_validate(s).model_dump(), "order_count": len(s.orders) if s.orders else 0}
-            for s in staff_list
-        ],
-        "total": total,
-        "page": page,
-        "limit": limit,
+        "success": True,
+        "data": {
+            "items": [
+                {**StaffResponse.model_validate(s).model_dump(), "order_count": len(s.orders) if s.orders else 0}
+                for s in staff_list
+            ],
+            "total": total,
+            "page": page,
+            "limit": limit,
+        },
     }
 
 
@@ -75,3 +78,26 @@ async def delete_staff(
     await db.delete(s)
     await db.commit()
     return {"message": "删除成功"}
+
+
+@router.put("/{staff_id}", response_model=StaffResponse)
+async def update_staff(
+    staff_id: str,
+    req: StaffUpdate,
+    company_id: str = Depends(get_current_company),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Staff).where(Staff.id == staff_id, Staff.company_id == company_id)
+    )
+    s = result.scalar_one_or_none()
+    if not s:
+        raise HTTPException(status_code=404, detail="员工不存在")
+
+    update_data = req.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(s, key, value)
+
+    await db.commit()
+    return StaffResponse.model_validate(s)

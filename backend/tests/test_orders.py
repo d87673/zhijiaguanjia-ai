@@ -82,8 +82,8 @@ async def test_list_orders(client: AsyncClient, auth_headers: dict, setup_order_
     response = await client.get("/api/v1/orders", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 3
-    assert len(data["orders"]) == 3
+    assert data["data"]["total"] == 3
+    assert len(data["data"]["items"]) == 3
 
 
 @pytest.mark.asyncio
@@ -108,13 +108,13 @@ async def test_filter_orders_by_status(client: AsyncClient, auth_headers: dict, 
         "items": [{"service_id": service_id, "quantity": 1, "price": 100.0}],
     }, headers=auth_headers)
     order_id = create_resp.json()["order_id"]
-    await client.put(f"/api/v1/orders/{order_id}/status?status=confirmed", headers=auth_headers)
+    await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "confirmed"}, headers=auth_headers)
 
     response = await client.get("/api/v1/orders?status=pending", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
-    assert data["total"] == 2
-    assert all(o["status"] == "pending" for o in data["orders"])
+    assert data["data"]["total"] == 2
+    assert all(o["status"] == "pending" for o in data["data"]["items"])
 
 
 @pytest.mark.asyncio
@@ -132,22 +132,23 @@ async def test_update_order_status_flow(client: AsyncClient, auth_headers: dict,
     order_id = create_resp.json()["order_id"]
 
     # pending → confirmed
-    resp1 = await client.put(f"/api/v1/orders/{order_id}/status?status=confirmed", headers=auth_headers)
+    resp1 = await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "confirmed"}, headers=auth_headers)
     assert resp1.status_code == 200
 
     # confirmed → dispatched (with staff assignment)
     resp2 = await client.put(
-        f"/api/v1/orders/{order_id}/status?status=dispatched&staff_id={staff_id}",
+        f"/api/v1/orders/{order_id}/status",
+        json={"status": "dispatched", "staff_id": staff_id},
         headers=auth_headers,
     )
     assert resp2.status_code == 200
 
     # dispatched → in_progress
-    resp3 = await client.put(f"/api/v1/orders/{order_id}/status?status=in_progress", headers=auth_headers)
+    resp3 = await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "in_progress"}, headers=auth_headers)
     assert resp3.status_code == 200
 
     # in_progress → completed
-    resp4 = await client.put(f"/api/v1/orders/{order_id}/status?status=completed", headers=auth_headers)
+    resp4 = await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "completed"}, headers=auth_headers)
     assert resp4.status_code == 200
 
 
@@ -164,7 +165,7 @@ async def test_cancel_order_from_pending(client: AsyncClient, auth_headers: dict
     }, headers=auth_headers)
     order_id = create_resp.json()["order_id"]
 
-    response = await client.put(f"/api/v1/orders/{order_id}/status?status=cancelled", headers=auth_headers)
+    response = await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "cancelled"}, headers=auth_headers)
     assert response.status_code == 200
     assert "已更新为 cancelled" in response.json()["message"]
 
@@ -181,14 +182,14 @@ async def test_update_order_invalid_status(client: AsyncClient, auth_headers: di
     }, headers=auth_headers)
     order_id = create_resp.json()["order_id"]
 
-    response = await client.put(f"/api/v1/orders/{order_id}/status?status=invalid_status", headers=auth_headers)
+    response = await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "invalid_status"}, headers=auth_headers)
     assert response.status_code == 400
 
 
 @pytest.mark.asyncio
 async def test_update_nonexistent_order(client: AsyncClient, auth_headers: dict):
     """更新不存在的订单应返回 404"""
-    response = await client.put("/api/v1/orders/fake-order-id/status?status=confirmed", headers=auth_headers)
+    response = await client.put("/api/v1/orders/fake-order-id/status", json={"status": "confirmed"}, headers=auth_headers)
     assert response.status_code == 404
 
 
@@ -217,6 +218,6 @@ async def test_order_contains_customer_name(client: AsyncClient, auth_headers: d
     }, headers=auth_headers)
 
     response = await client.get("/api/v1/orders", headers=auth_headers)
-    orders = response.json()["orders"]
+    orders = response.json()["data"]["items"]
     assert orders[0]["customer_name"] == "测试客户"
     assert orders[0]["status"] == "pending"

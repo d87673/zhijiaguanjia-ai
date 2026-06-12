@@ -5,7 +5,7 @@ import api from '@/lib/api';
 import type { User } from '@/types';
 
 export default function App() {
-  const { initialize, setUser, setAuth } = useAuthStore();
+  const { initialize, setUser, setAuth, logout } = useAuthStore();
 
   useEffect(() => {
     // Try to fetch current user on mount
@@ -22,6 +22,15 @@ export default function App() {
       initialize();
     }
   }, []);
+
+  useEffect(() => {
+    // Listen for auth:logout event from api interceptor (soft navigation)
+    const handleAuthLogout = () => {
+      logout();
+    };
+    window.addEventListener('auth:logout', handleAuthLogout);
+    return () => window.removeEventListener('auth:logout', handleAuthLogout);
+  }, [logout]);
 
   return <AppRouter />;
 }

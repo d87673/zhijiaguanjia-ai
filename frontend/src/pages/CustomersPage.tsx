@@ -5,6 +5,13 @@ import { useToastStore } from '@/stores/toastStore';
 import api from '@/lib/api';
 import type { Customer, CustomerCreate } from '@/types';
 
+/** 生成客户 H5 自助端访问链接的 token */
+function generateCustomerLink(customerId: string): string {
+  // 使用客户 ID 的简单 hash 作为 token（实际验证在后端用 HMAC）
+  // 此处仅用于展示链接格式——实际 token 应由后端 API 生成
+  return `${window.location.origin}/h5/${customerId}?token=`;
+}
+
 const emptyForm: CustomerCreate = { name: '', phone: '', email: '', address: '', notes: '', tags: [] };
 
 export function CustomersPage() {
@@ -20,7 +27,7 @@ export function CustomersPage() {
 
   const fetchCustomers = useCallback(() => {
     setLoading(true);
-    api.get<{ data: { items: Customer[]; total: number } }>('/customers', { params: search ? { search } : {} })
+    api.get<{ data: { items: Customer[]; total: number } }>('/customers', { params: search ? { q: search } : {} })
       .then((res) => setCustomers(res.data.data.items))
       .catch(() => addToast('加载客户列表失败', 'error'))
       .finally(() => setLoading(false));
@@ -82,9 +89,19 @@ export function CustomersPage() {
     { key: 'tags', header: '标签', render: (c) => (c.tags || []).map((t) => (
       <span key={t} className="inline-block bg-blue-50 text-blue-600 text-xs rounded px-2 py-0.5 mr-1 mb-1">{t}</span>
     ))},
-    { key: 'actions', header: '操作', className: 'w-24', render: (c) => (
+    { key: 'actions', header: '操作', className: 'w-32', render: (c) => (
       <div className="flex gap-2">
         <button onClick={(ev) => { ev.stopPropagation(); openEdit(c); }} className="text-blue-600 hover:text-blue-800 text-sm">编辑</button>
+        <button
+          onClick={(ev) => {
+            ev.stopPropagation();
+            navigator.clipboard.writeText(`${window.location.origin}/h5/${c.id}?token=`);
+            addToast('客户链接已复制到剪贴板（请联系管理员获取完整 Token）', 'info');
+          }}
+          className="text-green-600 hover:text-green-800 text-sm"
+        >
+          链接
+        </button>
         <button onClick={(ev) => { ev.stopPropagation(); handleDelete(c); }} className="text-red-500 hover:text-red-700 text-sm">删除</button>
       </div>
     )},

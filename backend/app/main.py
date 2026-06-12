@@ -6,6 +6,8 @@ from app.core.database import init_db
 from app.api import (
     auth_router, services_router, customers_router,
     staff_router, orders_router, ai_router, stats_router,
+    company_router, payments_router, export_router, h5_router,
+    staff_app_router,
 )
 
 settings = get_settings()
@@ -42,6 +44,11 @@ app.include_router(staff_router, prefix="/api/v1")
 app.include_router(orders_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
 app.include_router(stats_router, prefix="/api/v1")
+app.include_router(company_router, prefix="/api/v1")
+app.include_router(payments_router, prefix="/api/v1")
+app.include_router(export_router, prefix="/api/v1")
+app.include_router(h5_router, prefix="/api/v1")
+app.include_router(staff_app_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")

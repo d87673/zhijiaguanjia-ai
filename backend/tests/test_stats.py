@@ -14,20 +14,20 @@ async def test_get_stats_empty(client: AsyncClient, auth_headers: dict):
     data = response.json()
 
     summary = data["summary"]
-    assert summary["totalOrders"] == 0
-    assert summary["pendingOrders"] == 0
-    assert summary["completedOrders"] == 0
-    assert summary["todayOrders"] == 0
-    assert summary["totalCustomers"] == 0
-    assert summary["totalStaff"] == 0
-    assert summary["totalRevenue"] == 0
+    assert summary["total_orders"] == 0
+    assert summary["pending_orders"] == 0
+    assert summary["completed_orders"] == 0
+    assert summary["today_orders"] == 0
+    assert summary["total_customers"] == 0
+    assert summary["total_staff"] == 0
+    assert summary["total_revenue"] == 0
 
     # Status distribution should have all 6 statuses
-    assert len(data["statusDistribution"]) == 6
-    assert all(s["count"] == 0 for s in data["statusDistribution"])
+    assert len(data["status_distribution"]) == 6
+    assert all(s["count"] == 0 for s in data["status_distribution"])
 
     # Last 7 days should have 7 entries
-    assert len(data["last7Days"]) == 7
+    assert len(data["last_7_days"]) == 7
 
 
 @pytest.mark.asyncio
@@ -61,27 +61,27 @@ async def test_get_stats_with_data(client: AsyncClient, auth_headers: dict):
         order_id = create_resp.json()["order_id"]
         # Confirm 2 out of 3
         if i < 2:
-            await client.put(f"/api/v1/orders/{order_id}/status?status=confirmed", headers=auth_headers)
+            await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "confirmed"}, headers=auth_headers)
         # Complete 1
         if i < 1:
-            await client.put(f"/api/v1/orders/{order_id}/status?status=dispatched&staff_id={staff_id}", headers=auth_headers)
-            await client.put(f"/api/v1/orders/{order_id}/status?status=in_progress", headers=auth_headers)
-            await client.put(f"/api/v1/orders/{order_id}/status?status=completed", headers=auth_headers)
+            await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "dispatched", "staff_id": staff_id}, headers=auth_headers)
+            await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "in_progress"}, headers=auth_headers)
+            await client.put(f"/api/v1/orders/{order_id}/status", json={"status": "completed"}, headers=auth_headers)
 
     response = await client.get("/api/v1/stats", headers=auth_headers)
     assert response.status_code == 200
     data = response.json()
 
     summary = data["summary"]
-    assert summary["totalOrders"] == 3
-    assert summary["completedOrders"] == 1
-    assert summary["totalCustomers"] == 1
-    assert summary["totalStaff"] == 1
-    assert summary["todayOrders"] >= 0  # May be 0 or 3 depending on time
+    assert summary["total_orders"] == 3
+    assert summary["completed_orders"] == 1
+    assert summary["total_customers"] == 1
+    assert summary["total_staff"] == 1
+    assert summary["today_orders"] >= 0  # May be 0 or 3 depending on time
 
     # Status distribution should sum to total
-    total_from_status = sum(s["count"] for s in data["statusDistribution"])
-    assert total_from_status == summary["totalOrders"]
+    total_from_status = sum(s["count"] for s in data["status_distribution"])
+    assert total_from_status == summary["total_orders"]
 
 
 @pytest.mark.asyncio

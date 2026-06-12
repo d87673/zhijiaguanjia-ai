@@ -1,3 +1,6 @@
 - [智家管家AI 公司核心档案](memory/company-core-profile.md) — 产品定位、定价、KPI
 - [全流程自动化工作流](memory/operational-workflows.md) — 部门职责、日报标准
 - [公司安全规则](memory/security-rules.md) — .env保护、SSH鉴权、密钥管理
+- [2026-06-12 每日经营日报](memory/daily-reports/2026-06-12.md) — 今日经营数据与风险扫描
+- [AI模型路由规则](memory/model-routing-rules.md) — 默认flash，仅高复杂度任务用pro
+- [Claude 上下文约束规则](memory/claude-self-limit-rules.md) — 禁止全局扫描、承接上下文、限缩历史

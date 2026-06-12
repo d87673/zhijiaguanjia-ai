@@ -45,7 +45,7 @@ async def test_ai_chat_action_types(client: AsyncClient, auth_headers: dict):
 @pytest.mark.asyncio
 async def test_ai_stream_endpoint(client: AsyncClient, auth_headers: dict):
     """SSE 流式端点"""
-    async def mock_stream(messages):
+    async def mock_stream(messages, model="", **kwargs):
         yield {"choices": [{"delta": {"content": "您好"}}]}
         yield {"choices": [{"delta": {"content": "！"}}]}
 
