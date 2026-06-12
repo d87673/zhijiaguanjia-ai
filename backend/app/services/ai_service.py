@@ -10,11 +10,11 @@ async def chat_completion(
     temperature: float = 0.7,
     max_tokens: int = 2000,
 ) -> dict:
-    """Call Deepseek V4 Pro API."""
+    """Call Deepseek V4 Pro API (non-streaming)."""
     if not settings.DEEPSEEK_API_KEY:
         return {"choices": [{"message": {"content": "AI服务暂未配置，请联系管理员设置API密钥。"}}]}
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.post(
             settings.DEEPSEEK_API_URL,
             headers={
@@ -32,6 +32,51 @@ async def chat_completion(
         if response.status_code != 200:
             return {"choices": [{"message": {"content": f"AI服务暂时不可用（{response.status_code}），请稍后重试。"}}]}
         return response.json()
+
+
+async def chat_completion_stream(
+    messages: list[dict],
+    model: str = "deepseek-v4-pro",
+    temperature: float = 0.7,
+    max_tokens: int = 2000,
+):
+    """Call Deepseek V4 Pro API with SSE streaming. Yields delta chunks."""
+    if not settings.DEEPSEEK_API_KEY:
+        yield {"choices": [{"delta": {"content": "AI服务暂未配置，请联系管理员设置API密钥。"}}]}
+        return
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        async with client.stream(
+            "POST",
+            settings.DEEPSEEK_API_URL,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+            },
+            json={
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stream": True,
+                "thinking": {"type": "disabled"},
+            },
+        ) as response:
+            if response.status_code != 200:
+                yield {"choices": [{"delta": {"content": f"AI服务暂时不可用（{response.status_code}）"}}]}
+                return
+
+            # Parse SSE stream from DeepSeek
+            async for line in response.aiter_lines():
+                if line.startswith("data: "):
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        yield chunk
+                    except json.JSONDecodeError:
+                        continue
 
 
 async def doubao_chat_completion(
